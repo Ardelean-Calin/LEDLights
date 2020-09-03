@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"
+    />
+    <!-- 'nano' theme -->
+    <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.es5.min.js"></script>
+    <style>
+        .container{
+            display: flex;
+            flex-direction: column;
+            justify-content: start;
+            align-items: center;
+            padding: 1rem;
+        }
+        .pcr-app[data-theme=nano] {
+            width: 100%;
+            height: 50%;
+        }
+        .brightness-slider {
+            margin-top: 3rem;
+            width: 100%;
+        }
+
+        input[type=range]
+        {
+            width: 100%;
+        }
+    </style>
+    <title>LED Lights</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="color-picker"></div>
+      <div class="brightness-slider">
+          <input type="range" name="brightness" id="brightness" min=0 max=100 value=100 step=1 oninput="setBrightness(this.value)">
+          <div style="text-align: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 1.5rem;">Brightness</div>
+      </div>
+      <div class="control" style="position: absolute; bottom: 2rem">
+          <button onclick="turnOff()">Turn off</button>
+      </div>
+    </div>
+  </body>
+  <script>
+    var red = 0;
+    var green = 0;
+    var blue = 0;
+    var brightness = 100;
+    const webSocket = new WebSocket("ws://Lightstrip.local:81");
+    webSocket.addEventListener("error", function(err) {
+        console.log("Websocket error:", err);
+    });
+    webSocket.addEventListener("open", function(event){
+        console.log("Socket opened!");
+    });
+    webSocket.addEventListener("message", function(event){
+        console.log("LED Strip:", event.data);
+    });
+
+    const pickr = Pickr.create({
+      el: ".color-picker",
+      theme: "nano", // or 'monolith', or 'nano'
+      default: "#EFEBD8",
+      useAsButton: true,
+      swatches: ["#EFEBD8", "#F44336", "#9C27B0", "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4", "#009688", "#4CAF50", "#FDD835"],
+      inline: true,
+      showAlways: true,
+      position: "middle",
+      padding: 0,
+      components: {
+        // Main components
+        preview: true,
+        hue: true,
+
+        // Input / output Options
+        interaction: {
+          hex: true,
+          rgba: false,
+          hsla: false,
+          hsva: false,
+          cmyk: false,
+          input: true,
+          clear: false,
+          save: false,
+        },
+      },
+    });
+
+    pickr.on("change", function (colorObj, instance) {
+        const rgbaColor = colorObj.toRGBA();
+        red = Math.floor(rgbaColor[0]);
+        green = Math.floor(rgbaColor[1]);
+        blue = Math.floor(rgbaColor[2]);
+        webSocket.send(`${red.toString(16)} ${green.toString(16)} ${blue.toString(16)} ${brightness.toString(16)}`);
+    });
+
+    function setBrightness(value) {
+        brightness = parseInt(value);
+        webSocket.send(`${red.toString(16)} ${green.toString(16)} ${blue.toString(16)} ${brightness.toString(16)}`);
+    };
+
+    function turnOff()
+    {
+        webSocket.send("00 00 00 00");
+    }
+  </script>
+</html>
