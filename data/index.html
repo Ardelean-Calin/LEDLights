@@ -141,6 +141,7 @@
 
     function turnOff() {
       webSocket.send("00 00 00 00");
+      document.getElementById('brightness').value = 0;
     }
   </script>
 </html>
