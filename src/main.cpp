@@ -16,6 +16,8 @@
 void processWebsocketData(uint8_t num, WStype_t type, uint8_t *payload,
                           size_t length);
 void setRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness);
+String getContentType(String filename);
+bool handleFileRead(String path, AsyncWebServerRequest *request);
 
 // Replace with your network credentials
 const char *ssid = "Calin-Network-2.4";
@@ -28,9 +30,9 @@ AsyncWebServer server(80);
 WebSocketsServer ws_server(81);
 
 // Red, green, and blue pins for PWM control
-#define PIN_RED   23 // 13 corresponds to GPIO13
-#define PIN_GREEN 25 // 12 corresponds to GPIO12
-#define PIN_BLUE  32 // 14 corresponds to GPIO14
+#define PIN_RED   23 // 23 corresponds to GPIO23
+#define PIN_GREEN 25 // 25 corresponds to GPIO25
+#define PIN_BLUE  32 // 32 corresponds to GPIO32
 
 // Setting PWM frequency, channels and bit resolution
 #define LED_FREQUENCY (5000U)
@@ -74,14 +76,11 @@ void setup()
   }
 
   // Main webpage with LED control
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(SPIFFS, "/index.html", String(), false);
+  server.onNotFound([](AsyncWebServerRequest *request) {   // If the client requests any URI
+    if (!handleFileRead(request->url(), request))          // send it if it exists
+      request->send(404, "text/plain", "404: Not Found");  // otherwise, respond with a 404 (Not Found) error
   });
 
-  // Route to load style.css file
-  // server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-  //   request->send(SPIFFS, "/style.css", "text/css");
-  // });
   ArduinoOTA.onEnd([]() {
     // On upload end => restart ESP
     ESP.restart();
@@ -142,6 +141,31 @@ void processWebsocketData(uint8_t num, WStype_t type, uint8_t *payload,
     break;
     break;
   }
+}
+
+String getContentType(String filename){
+  if(filename.endsWith(".html")) return "text/html";
+  else if(filename.endsWith(".css")) return "text/css";
+  else if(filename.endsWith(".js")) return "application/javascript";
+  else if(filename.endsWith(".ico")) return "image/x-icon";
+  else if(filename.endsWith(".gz")) return "application/x-gzip";
+  return "text/plain";
+}
+
+bool handleFileRead(String path, AsyncWebServerRequest *request){  // send the right file to the client (if it exists)
+  if(path.endsWith("/")) path += "index.html";           // If a folder is requested, send the index file
+  String contentType = getContentType(path);             // Get the MIME type
+  String pathWithGz = path + ".gz";
+  if(SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)){  // If the file exists, either as a compressed archive, or normal
+    if(SPIFFS.exists(pathWithGz))                          // If there's a compressed version available
+      path += ".gz";    
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, path, "text/html", false)   ;        // Send the file to the client
+    if (SPIFFS.exists(pathWithGz))
+      response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+    return true;
+  }
+  return false;                                          // If the file doesn't exist, return false
 }
 
 void setRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness)
