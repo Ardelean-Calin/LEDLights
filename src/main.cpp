@@ -35,7 +35,7 @@ WebSocketsServer ws_server(81);
 #define PIN_BLUE  32 // 32 corresponds to GPIO32
 
 // Setting PWM frequency, channels and bit resolution
-#define LED_FREQUENCY (5000U)
+#define LED_FREQUENCY (100U)
 #define CHANNEL_RED   0
 #define CHANNEL_GREEN 1
 #define CHANNEL_BLUE  2
