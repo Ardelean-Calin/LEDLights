@@ -183,7 +183,6 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
   if (String(topic) == "rgbon")
   {
     TelnetStream.println("rgbon");
-    mqttClient.publish("rgbonStatus", data, length);
     if (data[0] == '0')
       v = 0.0;
     else if (data[0] == '1')
@@ -191,7 +190,6 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
   }
   else if (String(topic) == "rgbbrightness")
   {
-    mqttClient.publish("rgbbrightnessStatus", data, length);
     brightness = String((char *)data).toFloat();
     v = brightness;
   }
