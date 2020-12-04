@@ -34,6 +34,8 @@ const char *password = "Trappist-1";
 const char *hostname = "Lightstrip";
 
 // MQTT configuration
+#define MQTT_STATUS_UPDATE_PERIOD_MS 1000
+
 const char *mqttServer = "192.168.1.243";
 
 WiFiClient espClient;
@@ -69,6 +71,9 @@ float brightness = 0;
 float h = 0.0, s = 100.0, v = brightness;
 uint32_t lastCallTime = 0;
 uint32_t currCallTime = 0;
+uint32_t lastCallTimeMqtt = 0;
+uint32_t currCallTimeMqtt = 0;
+uint8_t startupSequence = 1;
 
 void setup()
 {
@@ -137,7 +142,20 @@ void loop()
   }
   else
   {
+    if (startupSequence == 1)
+    {
+      mqttClient.publish("status", "true");
+      startupSequence = 0;
+    }
     mqttClient.loop();
+
+    /* Send a keep-alive message */
+    // currCallTimeMqtt = millis();
+    // if (currCallTimeMqtt - lastCallTimeMqtt >= MQTT_STATUS_UPDATE_PERIOD_MS)
+    // {
+    //   mqttClient.publish("status", "true");
+    //   lastCallTimeMqtt = currCallTimeMqtt;
+    // }
   }
 
   /* Runs every few milliseconds to take the RGB strip through all colors of the
@@ -160,7 +178,7 @@ void reconnectMqtt()
   while (!mqttClient.connected() && (tries < 5))
   {
     // Attempt to connect
-    if (mqttClient.connect("ESP32Client"))
+    if (mqttClient.connect("ESP32Client", "status", 0, true, "false"))
     {
       // Subscribe
       mqttClient.subscribe("rgbon");
