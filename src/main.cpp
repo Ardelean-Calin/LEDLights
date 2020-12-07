@@ -135,6 +135,12 @@ void setup()
 
 void loop()
 {
+  /* If we lost wifi connection => restart ESP */
+  if (WiFi.status() != WL_CONNECTED)
+  {
+      ESP.restart();
+  }
+
   ArduinoOTA.handle();
   if (!mqttClient.connected())
   {
