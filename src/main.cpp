@@ -138,7 +138,7 @@ void loop()
   /* If we lost wifi connection => restart ESP */
   if (WiFi.status() != WL_CONNECTED)
   {
-      ESP.restart();
+    ESP.restart();
   }
 
   ArduinoOTA.handle();
@@ -156,12 +156,12 @@ void loop()
     mqttClient.loop();
 
     /* Send a keep-alive message */
-    // currCallTimeMqtt = millis();
-    // if (currCallTimeMqtt - lastCallTimeMqtt >= MQTT_STATUS_UPDATE_PERIOD_MS)
-    // {
-    //   mqttClient.publish("status", "true");
-    //   lastCallTimeMqtt = currCallTimeMqtt;
-    // }
+    currCallTimeMqtt = millis();
+    if (currCallTimeMqtt - lastCallTimeMqtt >= MQTT_STATUS_UPDATE_PERIOD_MS)
+    {
+      mqttClient.publish("status", "true");
+      lastCallTimeMqtt = currCallTimeMqtt;
+    }
   }
 
   /* Runs every few milliseconds to take the RGB strip through all colors of the
@@ -173,6 +173,11 @@ void loop()
     h += H_MAX / (RGB_ANIMATION_DURATION_MS / RGB_UPDATE_PERIOD);
     RGBColor xRGB = hsv2rgb(h, s, v);
     setRGB(xRGB.r, xRGB.g, xRGB.b);
+    lastCallTime = currCallTime;
+  }
+  else if (currCallTime < lastCallTime)
+  {
+    /* Overflow happened */
     lastCallTime = currCallTime;
   }
 }
@@ -200,13 +205,15 @@ void reconnectMqtt()
 
 void mqttCallback(char *topic, byte *payload, unsigned int length)
 {
-  byte *data = (byte *)malloc(length * sizeof(byte) + 1);
+  uint8_t *data = (uint8_t *)malloc(length * sizeof(uint8_t) + 1);
   memcpy(data, payload, length);
   data[length] = '\0';
 
   if (String(topic) == "rgbon")
   {
     TelnetStream.println("rgbon");
+    /* Echo data */
+    mqttClient.publish("rgbon_echo", (const char *)data, true);
     if (data[0] == '0')
       v = 0.0;
     else if (data[0] == '1')
@@ -214,6 +221,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
   }
   else if (String(topic) == "rgbbrightness")
   {
+    mqttClient.publish("rgbbrightness_echo", (const char *)data, true);
     brightness = String((char *)data).toFloat();
     v = brightness;
   }
